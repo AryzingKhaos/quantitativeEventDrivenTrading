@@ -1,0 +1,28 @@
+# Secrets — never commit
+.env
+.env.local
+.env.*.local
+
+# Build output
+dist/
+
+# Dependencies
+node_modules/
+
+# Runtime artefacts
+logs/
+*.log
+fetcher-profiles/
+
+# OS / editor noise
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Local-only IDE / tooling caches
+.cache/
+
+# Keep these committed:
+#   .env.example        — template for new contributors
+#   .env.public         — non-sensitive runtime defaults loaded by env.ts
