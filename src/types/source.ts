@@ -36,11 +36,16 @@ export type SourceKey =
 
 export type SourceType = 'exchange' | 'news';
 
+/** Which market a source feeds. Decides the rule set and LLM prompt used. */
+export type MarketKind = 'crypto' | 'ashare';
+
 export interface SourceConfig {
   key: SourceKey;
   name: string;
   enabled: boolean;
   type: SourceType;
+  /** Defaults to 'crypto' when omitted (see config/markets.ts). A股 sources set 'ashare'. */
+  market?: MarketKind;
   baseUrl: string;
   listUrl: string;
   pollIntervalSec: number;

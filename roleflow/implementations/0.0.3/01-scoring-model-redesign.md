@@ -66,5 +66,4 @@ interface RecallResult {
 
 ## 开放问题
 
-- `events.score` 列：继续存"召回分"还是干脆存 `02` 的最终 `impact`？建议存 `impact`，召回分只存 `triage`（见 `02`）。
-- threshold 调到多低算合适——需用 `analyze-passrate` 实测召回/成本曲线后定。
+→ 已集中到 [OPEN-QUESTIONS.md](./OPEN-QUESTIONS.md)（本步相关：OQ-A3 threshold 降多少、OQ-A4 `events.score` 存什么）。

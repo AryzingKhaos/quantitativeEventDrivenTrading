@@ -8,9 +8,10 @@ import type {
 } from '../types/event.js';
 import type { SourceKey } from '../types/source.js';
 
-interface EventRow {
+export interface EventRow {
   id: number;
   source_key: PersistedEvent['sourceKey'];
+  market: PersistedEvent['market'] | null;
   title: string;
   summary: string | null;
   content: string | null;
@@ -34,12 +35,20 @@ interface EventRow {
   refine_prompt_version: string | null;
   cluster_id: number | string | null;
   cluster_role: PersistedEvent['clusterRole'];
+  triage_score: number | null;
+  direction: string | null;
+  tickers: string[] | null;
+  surprise: string | null;
+  horizon: string | null;
+  confidence: number | null;
+  detect_latency_ms: number | null;
 }
 
-function mapRow(row: EventRow): PersistedEvent {
+export function mapRow(row: EventRow): PersistedEvent {
   return {
     id: row.id,
     sourceKey: row.source_key,
+    market: row.market ?? 'crypto',
     title: row.title,
     summary: row.summary,
     content: row.content,
@@ -62,7 +71,14 @@ function mapRow(row: EventRow): PersistedEvent {
     refineModel: row.refine_model,
     refinePromptVersion: row.refine_prompt_version,
     clusterId: row.cluster_id !== null ? Number(row.cluster_id) : null,
-    clusterRole: row.cluster_role
+    clusterRole: row.cluster_role,
+    triageScore: row.triage_score,
+    direction: row.direction,
+    tickers: row.tickers,
+    surprise: row.surprise,
+    horizon: row.horizon,
+    confidence: row.confidence,
+    detectLatencyMs: row.detect_latency_ms
   };
 }
 
@@ -104,10 +120,18 @@ export class EventsRepository {
   }
 
   async insert(event: NormalizedEvent): Promise<PersistedEvent> {
+    // Detection latency (publish -> first seen). Forward-compat for the trading version;
+    // clamp negatives (clock skew) to 0, leave null when the source gave no publish time.
+    const detectLatencyMs =
+      event.publishedAt !== null
+        ? Math.max(0, event.fetchedAt.getTime() - event.publishedAt.getTime())
+        : null;
+
     const result = await this.pool.query<EventRow>(
       `
         INSERT INTO events (
           source_key,
+          market,
           title,
           summary,
           content,
@@ -115,13 +139,15 @@ export class EventsRepository {
           published_at,
           fetched_at,
           fingerprint,
-          raw_payload
+          raw_payload,
+          detect_latency_ms
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, $11)
         RETURNING *
       `,
       [
         event.sourceKey,
+        event.market,
         event.title,
         event.summary,
         event.content,
@@ -129,7 +155,8 @@ export class EventsRepository {
         event.publishedAt,
         event.fetchedAt,
         event.fingerprint,
-        JSON.stringify(event.rawPayload)
+        JSON.stringify(event.rawPayload),
+        detectLatencyMs
       ]
     );
 
@@ -260,7 +287,12 @@ export class EventsRepository {
           reason = $7,
           refined_at = NOW(),
           refine_model = $8,
-          refine_prompt_version = $9
+          refine_prompt_version = $9,
+          direction = $10,
+          tickers = $11,
+          surprise = $12,
+          horizon = $13,
+          confidence = $14
         WHERE id = $1
         RETURNING *
       `,
@@ -273,7 +305,12 @@ export class EventsRepository {
         refinement.tldr,
         refinement.reason,
         refinement.model,
-        refinement.promptVersion
+        refinement.promptVersion,
+        refinement.direction,
+        refinement.tickers,
+        refinement.surprise,
+        refinement.horizon,
+        refinement.confidence
       ]
     );
     return mapRow(result.rows[0]);

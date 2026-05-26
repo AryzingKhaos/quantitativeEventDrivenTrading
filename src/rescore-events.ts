@@ -1,7 +1,7 @@
 import { config as loadDotEnv } from 'dotenv';
 import { Pool } from 'pg';
 
-import { EventsRepository } from './db/events.repo.js';
+import { EventsRepository, mapRow, type EventRow } from './db/events.repo.js';
 import { FilterService } from './services/filter.service.js';
 import type { PersistedEvent } from './types/event.js';
 import type { SourceKey } from './types/source.js';
@@ -69,33 +69,7 @@ async function listEventsForRescore(
 ): Promise<PersistedEvent[]> {
   const sources = options.sourceKeys?.length ? options.sourceKeys : null;
   const days = options.days ?? null;
-  const result = await pool.query<{
-    id: number;
-    source_key: PersistedEvent['sourceKey'];
-    title: string;
-    summary: string | null;
-    content: string | null;
-    url: string;
-    published_at: Date | null;
-    fetched_at: Date;
-    fingerprint: string;
-    raw_payload: unknown;
-    matched: boolean;
-    matched_rule: string | null;
-    score: number;
-    created_at: Date;
-    importance: number | null;
-    category: string | null;
-    affected_assets: string[] | null;
-    actionable: boolean | null;
-    tldr: string | null;
-    reason: string | null;
-    refined_at: Date | null;
-    refine_model: string | null;
-    refine_prompt_version: string | null;
-    cluster_id: number | string | null;
-    cluster_role: 'primary' | 'secondary' | null;
-  }>(
+  const result = await pool.query<EventRow>(
     `
       SELECT *
       FROM events
@@ -110,33 +84,7 @@ async function listEventsForRescore(
     [sources, days, options.limit]
   );
 
-  return result.rows.map((row) => ({
-    id: row.id,
-    sourceKey: row.source_key,
-    title: row.title,
-    summary: row.summary,
-    content: row.content,
-    url: row.url,
-    publishedAt: row.published_at,
-    fetchedAt: row.fetched_at,
-    fingerprint: row.fingerprint,
-    rawPayload: row.raw_payload,
-    matched: row.matched,
-    matchedRule: row.matched_rule,
-    score: row.score,
-    createdAt: row.created_at,
-    importance: row.importance,
-    category: row.category,
-    affectedAssets: row.affected_assets,
-    actionable: row.actionable,
-    tldr: row.tldr,
-    reason: row.reason,
-    refinedAt: row.refined_at,
-    refineModel: row.refine_model,
-    refinePromptVersion: row.refine_prompt_version,
-    clusterId: row.cluster_id !== null ? Number(row.cluster_id) : null,
-    clusterRole: row.cluster_role
-  }));
+  return result.rows.map(mapRow);
 }
 
 async function main(): Promise<void> {

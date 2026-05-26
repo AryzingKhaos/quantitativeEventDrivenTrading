@@ -1,3 +1,4 @@
+import { marketForSource } from '../config/markets.js';
 import { rules } from '../config/rules.js';
 import type { PersistedEvent, ScoreResult } from '../types/event.js';
 import type { Rule } from '../types/rule.js';
@@ -9,9 +10,19 @@ function buildHaystack(event: Pick<PersistedEvent, 'sourceKey' | 'title' | 'summ
   return normalizeWhitespace([cleaned.title, cleaned.summary, cleaned.content].filter(Boolean).join(' '));
 }
 
+/**
+ * v0.0.3: the keyword layer is a *recall prefilter* only — it decides whether an
+ * event is worth sending to the LLM (`02`), not whether to push it. The final
+ * push/rank decision is the LLM impact score. `market` is carried through so the
+ * LLM uses the right prompt set.
+ */
 export class FilterService {
   evaluate(event: Pick<PersistedEvent, 'sourceKey' | 'title' | 'summary' | 'content'>): ScoreResult {
-    const applicableRules = rules.filter((rule) => rule.enabled && rule.sources.includes(event.sourceKey));
+    const market = marketForSource(event.sourceKey);
+    // Only rules of this event's market apply — crypto and A股 rule sets never cross-match.
+    const applicableRules = rules.filter(
+      (rule) => rule.enabled && rule.market === market && rule.sources.includes(event.sourceKey)
+    );
     const haystack = buildHaystack(event);
 
     for (const rule of applicableRules) {
@@ -22,12 +33,13 @@ export class FilterService {
           matchedRule: null,
           score: 0,
           excludedBy,
-          matchedKeywords: []
+          matchedKeywords: [],
+          market
         };
       }
     }
 
-    const scoredResults = applicableRules.map((rule) => this.evaluateRule(rule, haystack));
+    const scoredResults = applicableRules.map((rule) => this.evaluateRule(rule, haystack, market));
     const best = scoredResults.sort((left, right) => right.score - left.score)[0];
 
     if (!best) {
@@ -36,14 +48,15 @@ export class FilterService {
         matchedRule: null,
         score: 0,
         excludedBy: null,
-        matchedKeywords: []
+        matchedKeywords: [],
+        market: applicableRules.length > 0 ? market : null
       };
     }
 
     return best;
   }
 
-  private evaluateRule(rule: Rule, haystack: string): ScoreResult {
+  private evaluateRule(rule: Rule, haystack: string, market: ScoreResult['market']): ScoreResult {
     const matchedKeywords: string[] = [];
     let score = 0;
 
@@ -61,7 +74,8 @@ export class FilterService {
       matchedRule: score >= rule.threshold ? rule.name : null,
       score,
       excludedBy: null,
-      matchedKeywords
+      matchedKeywords,
+      market
     };
   }
 }

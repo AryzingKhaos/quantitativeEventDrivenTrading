@@ -4,6 +4,7 @@ export const rules: Rule[] = [
   {
     name: 'exchange-high-priority',
     enabled: true,
+    market: 'crypto',
     sources: ['binance', 'okx', 'bybit', 'coinbase', 'bitget'],
     threshold: 4,
     excludeKeywords: [
@@ -144,6 +145,7 @@ export const rules: Rule[] = [
   {
     name: 'panews-breaking',
     enabled: true,
+    market: 'crypto',
     sources: ['panews'],
     threshold: 3,
     excludeKeywords: ['行情回顾', '专栏', '投稿', '研报精选'],
@@ -176,6 +178,7 @@ export const rules: Rule[] = [
     // arXiv feeds intentionally excluded — paper titles match too many generic terms.
     name: 'ai-industry-catalyst',
     enabled: true,
+    market: 'crypto',
     sources: [
       'openai_blog',
       'nvidia_blog',

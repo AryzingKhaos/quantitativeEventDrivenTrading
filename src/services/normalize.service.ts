@@ -1,5 +1,6 @@
 import type { CollectorItem } from '../collectors/types.js';
 import type { NormalizedEvent } from '../types/event.js';
+import { marketForSource } from '../config/markets.js';
 import { buildFingerprint } from '../utils/fingerprint.js';
 import { deriveSummary, normalizeWhitespace, sanitizeTitle } from '../utils/text.js';
 import { nowUtc, parseMaybeDate } from '../utils/time.js';
@@ -18,6 +19,7 @@ export class NormalizeService {
 
     return {
       sourceKey: item.sourceKey,
+      market: marketForSource(item.sourceKey),
       title,
       summary,
       content: content || null,

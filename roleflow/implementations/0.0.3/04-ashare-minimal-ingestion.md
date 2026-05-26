@@ -6,7 +6,7 @@ A股 完全空白。A股 是**政策 + 强制披露**驱动的市场，事件源
 
 ## 目标
 
-A股 从 0 到 1，最小可用：**只接 cninfo 巨潮**（用户已定），跑通"披露 → 召回 → LLM 冲击 → 推送"全链路。财联社等强反爬快讯源**本版不做**。
+A股 从 0 到 1，最小可用：**只接 cninfo 巨潮**，跑通"披露 → 召回 → LLM 冲击 → 推送"全链路。财联社等强反爬快讯源**本版不做，0.0.5 再接**。
 
 ## 涉及文件
 
@@ -14,6 +14,7 @@ A股 从 0 到 1，最小可用：**只接 cninfo 巨潮**（用户已定），�
 - 改：`src/config/sources.ts`（注册 cninfo，`market: 'ashare'`）
 - 改：`src/config/rules.ts`（新增 `market:'ashare'` 规则集 / 召回词）
 - 新：`src/config/ashare-tickers.json` + 加载器（实体→6 位代码 + 概念板块）
+- 改：`src/config/watchlist.ts`（watchlist 按 `market` 拆成 crypto / ashare 两套）
 - 改：`src/config/prompts/`（A股 system prompt，在 `02` 已预留双市场）
 
 ## 设计要点
@@ -24,6 +25,7 @@ A股 从 0 到 1，最小可用：**只接 cninfo 巨潮**（用户已定），�
 
 - 抓**分类公告**：重大事项 / 业绩预告·快报 / 重组 / 权益变动 / 停复牌 / 立案 等。
 - 每条公告 → normalize 成统一 event（title = 公告标题，content = 摘要/正文，`tickers` 预填该公司 6 位代码）。
+- 抓取频率与反爬强度实测决定，复用 panews 踩过 Cloudflare 的那套 fetcher 经验。
 - 注意交易时段：A股 有盘前/盘中/盘后与**涨跌停**——本版只在展示层标注"是否盘中/是否易封板"，**不做任何交易动作**。
 
 ### A股 事件类型规则（召回层）
@@ -46,7 +48,11 @@ A股 很多 alpha 在"一条利好带动整条板块"：
 
 - 公司 → 其 `concepts[]`（所属概念板块）。
 - `02` 的 A股 prompt 增加一问："此事件是公司个体级还是板块级利好/利空？" → 写入 `reason`，板块级事件 impact 适当上浮。
-- 完整的板块联动图谱推迟到 ≥0.0.4，本版只做"标注所属板块 + LLM 粗判板块级"。
+- 完整的板块联动图谱推迟到 0.0.5，本版只做"标注所属板块 + LLM 粗判板块级"。
+
+### watchlist 按 market 拆
+
+`watchlist` 拆成 crypto / ashare 两套（A股 关注的个股/板块与 crypto 资产完全不同）；refine 与推送加权按事件 `market` 取对应那套。
 
 ## 灰度策略
 
@@ -61,7 +67,4 @@ A股 很多 alpha 在"一条利好带动整条板块"：
 
 ## 开放问题
 
-- `ashare-tickers.json` 初始数据从哪来（一次性导出全市场列表 vs 增量维护）？
-- cninfo 抓取频率与反爬强度需实测（参考 panews 的 CF 经验）。
-- 互动易 / 交易所公告 是否本版就加，还是 cninfo 稳定后再说？（倾向后者）
-- 财联社（反爬强、但快）明确推迟到 0.0.4。
+→ 已集中到 [OPEN-QUESTIONS.md](./OPEN-QUESTIONS.md)（本步相关：OQ-C1 实体→代码 数据来源、OQ-C2 cninfo 抓取/反爬、OQ-C3 互动易/交易所公告是否本版加、OQ-C4 财联社推迟）。

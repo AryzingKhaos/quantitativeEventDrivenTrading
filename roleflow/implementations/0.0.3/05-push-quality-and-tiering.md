@@ -19,11 +19,13 @@
 
 ## 设计要点
 
+不分频道：crypto 与 A股 共用一个 Telegram 频道，但每条消息**头部标明话题**（`加密` / `A股`），避免混淆。
+
 ### 消息模板（展示 02 的字段）
 
 **crypto：**
 ```
-【{impact}/10 · {direction_emoji}{category}】{tldr}
+【加密 · {direction_emoji}{impact}/10 · {category}】{tldr}
 标的：{tickers}    意外度：{surprise}    视野：{horizon}
 为什么：{reason}
 来源：{sourceKey} · {publishedAt 北京时间}（延迟 {detect_latency}）
@@ -32,14 +34,14 @@
 
 **A股：**
 ```
-【{impact}/10 · {direction_emoji}{category}】{tldr}
+【A股 · {direction_emoji}{impact}/10 · {category}】{tldr}
 标的：{name}（{code}） {板块级? · 概念:xxx}
 意外度：{surprise}    为什么：{reason}
 来源：巨潮 · {publishedAt}（盘中/盘后）
 {url}
 ```
 
-`direction_emoji`：bullish 🟢 / bearish 🔴 / neutral ⚪。方向、意外度、标的全部上墙——这正是用户要"看质量"的抓手。
+`direction_emoji`：bullish 🟢 / bearish 🔴 / neutral ⚪。话题、方向、意外度、标的全部上墙——这正是用户要"看质量"的抓手。`tickers` 为本地映射表规范化后的标的。
 
 ### 路由
 
@@ -54,8 +56,8 @@ else                                      -> silent
 
 沿用现有 `cluster.service`：同一事件多源报道归一簇。
 
-- 推**首发**（`detect_latency` 最小 / `published_at` 最早）的那条。
-- 同簇后续源到达：不单独推；若带来增量（更高 impact / 更权威源），可在原消息下追加一条"✅ 已被 {source} 确认"。
+- 推**首发**（`detect_latency` 最小 / `published_at` 最早）的那条，记下其 Telegram `message_id`。
+- 同簇后续源到达：不单独推；若带来增量（更高 impact / 更权威源），用 Telegram `editMessage` **编辑原消息**（追加"✅ 已被 {source} 确认 / impact 上调"），而不是再发一条。
 - 这同时让"谁更快"可量化，为交易版的延迟优势评估铺垫。
 
 ## 灰度策略
@@ -71,6 +73,4 @@ else                                      -> silent
 
 ## 开放问题
 
-- digest 是否同时归档为 daily markdown 供周末复盘？
-- "已确认"追加 vs 编辑原消息（Telegram editMessage）——哪个体验好？
-- crypto 与 A股 是否分两个 Telegram 频道/话题，避免互相淹没？
+→ 已集中到 [OPEN-QUESTIONS.md](./OPEN-QUESTIONS.md)（本步相关：OQ-E3 digest 归档、OQ-E4 已确认追加/编辑、OQ-E5 是否分频道；另 OQ-E2 watchlist 是否拆两套）。

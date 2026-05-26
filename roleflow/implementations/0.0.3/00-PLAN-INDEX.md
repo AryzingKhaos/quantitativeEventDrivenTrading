@@ -9,7 +9,7 @@
 1. [01-scoring-model-redesign.md](./01-scoring-model-redesign.md)
    把"分数"从**关键词相关性**重定义为**预期交易冲击**。关键词层 threshold 再降、彻底降级为"召回初筛"，只决定值不值得过 LLM。规则集按 `market`（crypto / ashare）拆分。
 2. [02-llm-impact-extraction.md](./02-llm-impact-extraction.md)
-   **本版本核心。** 把 `refine.service` 升级为两级 LLM：便宜模型粗评全量召回项（砍 noise）→ 强模型精评 top 候选，产出 `impact / direction / tickers / surprise / horizon / confidence / category / tldr / reason`。新增 DB 字段，其中 `direction / tickers / surprise / detect_latency / market` 为交易版预留。
+   **本版本核心。** 把 `refine.service` 改为召回后**单次 LLM 调用**（`deepseek-chat`，只喂标题 + 摘要做短评），产出 `impact / direction / tickers / surprise / horizon / confidence / category / tldr / reason`。新增 DB 字段，其中 `direction / tickers / surprise / detect_latency / market` 为交易版预留。
 3. [03-crypto-source-expansion.md](./03-crypto-source-expansion.md)
    crypto 信源做深：链上（鲸鱼 / 交易所净流 / 稳定币增发）、衍生品（资金费 / OI / 爆仓）、日历（解锁 / CoinMarketCal）、一手（关键人物 / 治理）。这些是领先指标，过 LLM 后信噪比远高于交易所公告。
 4. [04-ashare-minimal-ingestion.md](./04-ashare-minimal-ingestion.md)
@@ -18,6 +18,8 @@
    推送质量：消息展示 冲击分 / 方向 / 标的 / 意外度 / 一句话为什么（crypto 与 A股 两套模板）；即时单条 + 每日 digest 两级路由；跨源同事件推首发、后续作"已确认"不重复打扰。
 6. [06-forward-compat-and-quality-review.md](./06-forward-compat-and-quality-review.md)
    为交易版铺路 + 质量自检：记录 `detect_latency`（发布→首见）、规范化 `tickers`、贯穿 `market`；把 `analyze-passrate.ts` 扩展成"按冲击分桶抽样复核 LLM 判断"的工具，顺便攒下一版行情校准要用的样本。
+
+各步的待决策项统一收在 [OPEN-QUESTIONS.md](./OPEN-QUESTIONS.md)。
 
 ## 执行原则（沿用 0.0.1 / 0.0.2）
 

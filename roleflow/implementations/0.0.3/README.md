@@ -20,7 +20,7 @@
 **包含：**
 
 1. **打分模型重定义**：关键词层彻底降级为"召回初筛"，最终分 = LLM 估计的**预期交易冲击**。
-2. **两级 LLM 冲击抽取**：便宜模型粗评全量召回项 → 强模型精评 top；产出 `impact / direction / tickers / surprise / horizon / confidence`。
+2. **LLM 冲击抽取（单次调用）**：召回通过的事件 → 一次 `deepseek-chat` 调用（只喂标题 + 摘要做短评）→ 产出 `impact / direction / tickers / surprise / horizon / confidence`。
 3. **crypto 信源深化**：链上（鲸鱼 / 净流 / 稳定币增发）、衍生品（资金费 / OI / 爆仓）、日历（解锁 / CoinMarketCal）、一手（关键人物 / 治理提案）。
 4. **A股 最小可用**：cninfo 巨潮接入 + A股 事件规则 + 实体→股票代码 + 板块/概念传导（基础版）。
 5. **推送质量升级**：消息展示 冲击分 / 方向 / 标的 / 意外度 / 一句话为什么；即时单条 + 每日 digest 两级；跨源首发去重。
@@ -48,7 +48,7 @@
 | 维度       | v0.0.2                          | v0.0.3                                              |
 | ---------- | ------------------------------- | -------------------------------------------------- |
 | 打分语义   | 关键词相关性 + LLM importance   | LLM **预期交易冲击**（方向 / 量级 / 意外度）        |
-| LLM 结构   | 单模型，产 importance/category  | **两级模型** + 方向 / 标的 / 意外度 / 视野 / 置信   |
+| LLM 结构   | 单模型，产 importance/category  | 单次调用 + 方向 / 标的 / 意外度 / 视野 / 置信       |
 | LLM 开关   | 默认关                          | 默认开（影子 → 切换）                              |
 | crypto 源  | 交易所 + PANews                 | + 链上 + 衍生品 + 解锁日历 + 一手                   |
 | A股        | 无                              | cninfo 巨潮最小可用 + A股 事件规则 + 实体映射       |
@@ -69,14 +69,11 @@
 ```
 # 既有沿用：DATABASE_URL / TELEGRAM_* / DEEPSEEK_API_KEY / DEEPSEEK_BASE_URL
 
-# LLM 两级
-DEEPSEEK_MODEL_FAST=deepseek-chat          # 第一级：粗评全量召回项
-DEEPSEEK_MODEL_SMART=deepseek-reasoner     # 第二级：精评 top 候选（或仍用 chat，见 02 开放问题）
-LLM_REFINEMENT_ENABLED=true                # 默认开
-LLM_TRIAGE_MIN=4                           # 粗评分 >= 多少才升级到第二级精评
-LLM_DAILY_CALL_BUDGET=                     # 可选：每日调用上限，超了只走关键词保底
-IMPACT_PUSH_THRESHOLD=7                     # 冲击分 >= 多少即时单条推
-DIGEST_MIN_IMPACT=4                         # 冲击分 >= 多少进每日 digest
+# LLM 冲击抽取（单次调用）
+DEEPSEEK_MODEL_FAST=deepseek-chat          # refine 用的模型
+LLM_REFINEMENT_ENABLED=true                # 总开关
+LLM_REFINEMENT_THRESHOLD=6                  # impact >= 多少即时单条推（critical）
+DIGEST_MIN_IMPORTANCE=3                     # impact >= 多少进每日 digest
 
 # crypto 源（按需）
 ETHERSCAN_API_KEY=
@@ -92,11 +89,8 @@ ASHARE_TICKER_TABLE=./config/ashare-tickers.json
 
 ## 待确认事项（动手前最好定）
 
-- **两级模型的升级阈值 `LLM_TRIAGE_MIN` 与每日预算上限**：粗评全量的 token 成本可接受范围？第二级用 `reasoner`（贵、强）还是仍用 `chat`？
-- **A股 实体→代码 映射数据来源**：本地维护股票列表 JSON（代码 + 简称 + 概念板块） vs 接口拉？
-- **`surprise` 这版靠 LLM 判断够不够**：还是要先建最小"解锁 / 财报"日历做锚？（我的倾向：本版先 LLM，日历放 0.0.4）
-- **watchlist 是否拆 crypto / A股 两套**？
-- digest 除了推 Telegram，要不要同时归档成 daily markdown 供周末复盘？
+所有待决策项（含动手前必须定的）已统一收在 [OPEN-QUESTIONS.md](./OPEN-QUESTIONS.md)。
+动手前最急的几条：模型选型与预算（OQ-A1/A2）、A股 实体→代码 数据来源（OQ-C1）、crypto 第一个链上源（OQ-B1）。
 
 ## 文档列表
 

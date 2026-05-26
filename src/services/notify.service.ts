@@ -13,6 +13,24 @@ interface SendMessageResult {
   messageId: number | null;
 }
 
+const MARKET_LABEL: Record<string, string> = {
+  crypto: '加密',
+  ashare: 'A股'
+};
+
+const SURPRISE_LABEL: Record<string, string> = {
+  unscheduled: '突发',
+  beat: '超预期',
+  inline: '符合预期',
+  miss: '不及预期'
+};
+
+const HORIZON_LABEL: Record<string, string> = {
+  minutes: '分钟级',
+  intraday: '日内',
+  days: '数日'
+};
+
 export class NotifyService {
   constructor(
     private readonly env: RuntimeEnv,
@@ -40,13 +58,28 @@ export class NotifyService {
     }
 
     const lines: string[] = [];
+    const marketLabel = MARKET_LABEL[event.market] ?? event.market;
+
     if (event.importance !== null && event.tldr) {
       const category = event.category ?? '?';
       const prefix = translated ? '已翻译 · ' : '';
-      lines.push(`【${prefix}${event.importance}/10 · ${category}】${event.tldr}`);
+      const dirEmoji = event.direction === 'bullish' ? '🟢' : event.direction === 'bearish' ? '🔴' : '⚪';
+      lines.push(`【${marketLabel} · ${prefix}${dirEmoji}${event.importance}/10 · ${category}】${event.tldr}`);
       lines.push(`来源：${event.sourceKey}`);
-      if (event.affectedAssets && event.affectedAssets.length > 0) {
-        lines.push(`影响资产：${event.affectedAssets.join(', ')}`);
+      // Prefer normalized tickers; fall back to the looser affected_assets names.
+      const assets = (event.tickers && event.tickers.length > 0 ? event.tickers : event.affectedAssets) ?? [];
+      if (assets.length > 0) {
+        lines.push(`标的：${assets.join(', ')}`);
+      }
+      const meta: string[] = [];
+      if (event.surprise) {
+        meta.push(`意外度：${SURPRISE_LABEL[event.surprise] ?? event.surprise}`);
+      }
+      if (event.horizon) {
+        meta.push(`视野：${HORIZON_LABEL[event.horizon] ?? event.horizon}`);
+      }
+      if (meta.length > 0) {
+        lines.push(meta.join('    '));
       }
       if (event.reason) {
         lines.push(`原因：${event.reason}`);
@@ -60,7 +93,7 @@ export class NotifyService {
       lines.push(`时间：${formatBeijingTime(event.publishedAt ?? event.fetchedAt)}`);
       lines.push(`链接：${event.url}`);
     } else {
-      lines.push(translated ? '【新事件 · 已翻译】' : '【新事件】');
+      lines.push(translated ? `【${marketLabel} · 新事件 · 已翻译】` : `【${marketLabel} · 新事件】`);
       lines.push(`来源：${event.sourceKey}`);
       lines.push(`标题：${displayTitle}`);
       if (translated) {

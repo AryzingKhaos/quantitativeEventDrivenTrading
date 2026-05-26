@@ -248,10 +248,11 @@ export class PollJob {
             stats.matchedEvents.push(scoredEvent);
           }
 
+          // routing === null => refine disabled / failed → fall back to keyword push
           let routing: 'critical' | 'digest' | 'silent' | null = null;
           let clusterRole: 'primary' | 'secondary' | null = null;
           if (this.deps.env.llmRefinementEnabled && this.deps.refineService && scoreResult.matched) {
-            const refined = await this.deps.refineService.refine(scoredEvent);
+            const refined = await this.deps.refineService.refine(scoredEvent, scoreResult.market ?? 'crypto');
             if (refined) {
               scoredEvent = await this.deps.eventsRepo.updateRefinement(scoredEvent.id, refined);
               const route = this.deps.refineService.route(refined);
@@ -259,9 +260,12 @@ export class PollJob {
               this.deps.logger.info('Event refined', {
                 eventId: scoredEvent.id,
                 sourceKey: scoredEvent.sourceKey,
+                market: scoredEvent.market,
                 importance: refined.importance,
+                direction: refined.direction,
+                surprise: refined.surprise,
                 category: refined.category,
-                affectedAssets: refined.affectedAssets,
+                tickers: refined.tickers,
                 routing: route.kind,
                 routingReason: route.reason
               });
